@@ -15,7 +15,6 @@ export class App extends Component {
     search: '',
     photos: [],
     page: 1,
-    loading: false,
     status: 'idle',
     btnLoadMore: false,
   };
@@ -124,15 +123,5 @@ export class App extends Component {
         </>
       );
     }
-    // return (
-    //   <div>
-    //     <Searchbar onSubmit={this.handleFormSummit} />
-    //     <ToastContainer autoClose={2000} position="top-center" />
-    //     {loading && <Loader />}
-    //     <ImageGallery photos={photos} />
-
-    //     {btnLoadMore && <Button onClickRender={this.onClickLoadMore} />}
-    //   </div>
-    // );
   }
 }

@@ -15,70 +15,53 @@ export class App extends Component {
     search: '',
     photos: [],
     page: 1,
-    status: 'idle',
+    loading: false,
     btnLoadMore: false,
   };
 
-  handleFormSummit = async searchValue => {
-    const { page } = this.state;
-    try {
-      this.setState({ status: 'pending' });
-      const { hits } = await fetchPhoto(searchValue, page, perPage);
-      if (!hits.length) {
-        this.setState({ status: 'idle' });
-        toast.warn(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
-      } else {
-        console.log('RENDER NEWSEARCH');
-        const arrPhotos = hits.map(
-          ({ id, webformatURL, largeImageURL, tags }) => ({
-            id,
-            largeImageURL,
-            tags,
-            webformatURL,
-          })
-        );
-        this.setState({
-          search: searchValue,
-          page: 1,
-          photos: arrPhotos,
-          btnLoadMore: true,
-          status: 'resolved',
-        });
-      }
-    } catch (error) {
-      this.setState({ status: 'rejected' });
-    }
+  handleFormSummit = searchValue => {
+    this.setState({
+      search: searchValue,
+      page: 1,
+      photos: [],
+    });
   };
 
   componentDidUpdate = async (_, prevState) => {
     const { page: prevPage, search: prevSearch } = prevState;
-    const { page: newPage, search } = this.state;
+    const { page: newPage, search: newSearch } = this.state;
 
-    if (prevPage !== newPage && prevSearch === search) {
-      this.setState({ status: 'pending' });
+    if (prevPage !== newPage || prevSearch !== newSearch) {
+      this.setState({ loading: true });
       try {
         console.log('RENDER NEWPAGE');
-        const { totalHits, hits } = await fetchPhoto(search, newPage, perPage);
-        const totalPage = Math.ceil(totalHits / perPage);
-        if (totalPage < newPage) {
-          this.setState({ btnLoadMore: false });
-        }
-        const arrPhotos = hits.map(
-          ({ id, webformatURL, largeImageURL, tags }) => ({
-            id,
-            largeImageURL,
-            tags,
-            webformatURL,
-          })
+        const { totalHits, hits } = await fetchPhoto(
+          newSearch,
+          newPage,
+          perPage
         );
-        this.setState(prevState => ({
-          photos: [...prevState.photos, ...arrPhotos],
-          status: 'resolved',
-        }));
+        if (!hits.length) {
+          toast.warn(
+            'Sorry, there are no images matching your search query. Please try again.'
+          );
+        } else {
+          const arrPhotos = hits.map(
+            ({ id, webformatURL, largeImageURL, tags }) => ({
+              id,
+              largeImageURL,
+              tags,
+              webformatURL,
+            })
+          );
+          this.setState(prevState => ({
+            photos: [...prevState.photos, ...arrPhotos],
+            loading: false,
+            btnLoadMore: Math.ceil(totalHits / perPage) > newPage,
+          }));
+        }
       } catch (error) {
-        this.setState({ status: 'rejected' });
+        onFetchError();
+        this.setState({ loading: false });
       }
     }
   };
@@ -87,41 +70,16 @@ export class App extends Component {
   };
 
   render() {
-    const { photos, status, btnLoadMore } = this.state;
-    if (status === 'idle') {
-      return (
-        <>
-          <Searchbar onSubmit={this.handleFormSummit} />
-          <ToastContainer autoClose={2000} position="top-center" />
-        </>
-      );
-    }
-    if (status === 'pending') {
-      return (
-        <>
-          <Searchbar onSubmit={this.handleFormSummit} />
-          <Loader />
-        </>
-      );
-    }
-    if (status === 'rejected') {
-      return (
-        <>
-          <Searchbar onSubmit={this.handleFormSummit} />
-          <ToastContainer autoClose={2000} position="top-center" />
-          {onFetchError()}
-        </>
-      );
-    }
-    if (status === 'resolved') {
-      return (
-        <>
-          <Searchbar onSubmit={this.handleFormSummit} />
-          <ToastContainer autoClose={2000} position="top-center" />
-          <ImageGallery photos={photos} />
-          {btnLoadMore && <Button onClickRender={this.onClickLoadMore} />}
-        </>
-      );
-    }
+    const { photos, loading, btnLoadMore } = this.state;
+
+    return (
+      <>
+        <Searchbar onSubmit={this.handleFormSummit} />
+        <ToastContainer autoClose={2000} position="top-center" />
+        {loading && <Loader />}
+        {!!photos.length && <ImageGallery photos={photos} />}
+        {btnLoadMore && <Button onClickRender={this.onClickLoadMore} />}
+      </>
+    );
   }
 }
